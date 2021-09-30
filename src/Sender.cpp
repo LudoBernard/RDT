@@ -8,14 +8,15 @@
 
 void Sender::ReceivePacket(const Packet &packet)
 {
-    //TODO check if received packet is corrupted
-
-
+    if (!CheckCorrupt(packet))
+    {
+        return;
+    }
     bool isAck = packet.data[0];
     byte seqNmb = packet.sequenceNmb;
-    const Packet& sentPacket = sentPackets_[seqNmb-1];
     if(isAck)
     {
+    	
         if(seqNmb == 1)
         {
             CalculateFirstRTT(packet.rtt);
@@ -24,12 +25,13 @@ void Sender::ReceivePacket(const Packet &packet)
         {
             CalculateNewRTT(packet.rtt);
         }
-        //TODO manage internal state when receiving ack
+        timer_ = 0.f;
+        lastSendSeqNmb_++;
     }
     else
     {
-        //TODO manage internal state when receiving nak
     }
+	
 }
 
 void Sender::SendPacket(const Packet &packet)
@@ -84,12 +86,18 @@ byte Sender::GetLastSendSeqNmb() const
 
 void Sender::CalculateFirstRTT(float r)
 {
-    //TODO Calculate SRTT, RTTVAR and RTO according to RFC 6298
+    srtt_ = r;
+    rttvar_ = (r / 2.f);
+    rto_ = srtt_ + std::max(g_, k_ * rttvar_);
+    if (rto_ < 1.0f) rto_ = 1.0f;
 }
 
 void Sender::CalculateNewRTT(float r)
 {
-    //TODO Calculate SRTT, RTTVAR and RTO according to RFC 6298
+    rttvar_ = (1.f - beta_) * rttvar_ + beta_ * std::abs(srtt_ - r);
+    srtt_ = (1.f - alpha_) * srtt_ + alpha_ * r;
+    rto_ = srtt_ + std::max(g_, k_ * rttvar_);
+    if (rto_ < 1.0f) rto_ = 1.0f;
 }
 
 bool Sender::IsMessageSent() const {
@@ -102,7 +110,9 @@ void Sender::OnTimeout()
     packet.rtt = packetDelay_;
     SendPacket(packet);
     //TODO update RTT and timer
-
+    rto_ *= 2.f;
+    if (rto_ < 1.0f) rto_ = 1.0f;
+    timer_ = 0.0f;
 }
 
 void Sender::SendNewPacket(float packetDelay)

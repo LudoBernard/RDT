@@ -3,6 +3,7 @@
 
 void Receiver::ReceivePacket(const Packet &packet)
 {
+    rtt_ = packet.rtt;
     if(Client::CheckCorrupt(packet))
     {
         SendACK(packet.sequenceNmb);
@@ -23,6 +24,7 @@ void Receiver::SendACK(byte sequenceNmb)
     Packet packet;
     packet.sequenceNmb = sequenceNmb;
     packet.data[0] = true;
+    packet.rtt = rtt_;
     packet = Client::GenerateChecksum(packet);
     SendPacket(packet);
 }
