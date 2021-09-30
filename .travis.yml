@@ -1,0 +1,23 @@
+sudo: false
+language: cpp
+compiler:
+  - clang
+os:
+  - linux
+dist: bionic
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - clang
+
+before_install:
+  - eval "CC=clang && CXX=clang++"
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_CXX_COMPILER=$COMPILER .. && make
+  - ./test/tests/runTests
